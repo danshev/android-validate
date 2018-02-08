@@ -99,6 +99,8 @@ class DigitalIDValidator private constructor(val context: Context){
     private var currentlyPosting = false
 
     fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
+        SettingMgr.context = this.context
+        
         if (barcode.format != Barcode.QR_CODE)
             return Pair(null, null)
 
@@ -264,16 +266,16 @@ class DigitalIDValidator private constructor(val context: Context){
         return fact.generatePublic(spec)
     }
 
-    private fun hexStringToByteArray(hexString : String) : ByteArray {
+    private fun hexStringToByteArray(hexString: String): ByteArray {
         val len = hexString.length
-
-        val buffer = ByteBuffer.allocate(len / 2)
-
-        for (i in 0..(len / 2 - 1)) {
-            val subStr = hexString.substring(startIndex = i * 2, endIndex = i * 2 + 1)
-            buffer.put(subStr.toByte())
+        val data = ByteArray(len / 2)
+        var i = 0
+        while (i < len) {
+            data[i / 2] = ((Character.digit(hexString[i], 16) shl 4) + Character
+                    .digit(hexString[i + 1], 16)).toByte()
+            i += 2
         }
-        return buffer.array()
+        return data
     }
 
     private fun calculateDigitalWatermark(fromHash : String) : Int {
