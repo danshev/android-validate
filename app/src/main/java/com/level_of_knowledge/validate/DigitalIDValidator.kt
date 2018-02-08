@@ -259,7 +259,11 @@ class DigitalIDValidator private constructor(val context: Context){
     }
 
     fun loadPublicKey(stored : String) : PublicKey {
-        val data = Base64.decode(stored.toByteArray(), Base64.DEFAULT)
+        var editedKey = stored
+        editedKey = editedKey.replace("-----BEGIN PUBLIC KEY-----", "")
+        editedKey = editedKey.replace("-----END PUBLIC KEY-----", "")
+
+        val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
         val spec = X509EncodedKeySpec(data)
         val fact = KeyFactory.getInstance("RSA")
 
