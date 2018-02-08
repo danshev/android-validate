@@ -36,6 +36,7 @@ class DigitalIDValidator private constructor(val context: Context){
 
         fun createInstance(context : Context) : DigitalIDValidator? {
             _instance = DigitalIDValidator(context)
+            _instance?.syncKeys()
             return _instance
         }
     }
@@ -98,14 +99,21 @@ class DigitalIDValidator private constructor(val context: Context){
     var serviceAvailable = false
     private var currentlyPosting = false
 
-    fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
+/*    fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
         SettingMgr.context = this.context
         
+        if (barcode.format != Barcode.QR_CODE)
+            return Pair(null, null)*/
+    fun validate(barcode: Barcode?, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
+        /*SettingMgr.context = this.context
+
         if (barcode.format != Barcode.QR_CODE)
             return Pair(null, null)
 
         // Get the data contained by the QR code and ensure it's string
-        val dataString = barcode.rawValue
+        val dataString = barcode.rawValue*/
+
+        val dataString = "A000000248010001000202BF×Smith÷Patrick O'Neil÷'19 84 02 23'÷'20 16 11 21'÷'20 21 02 23'÷USA÷MA÷T1000924÷B;19910901;20350301;;;×1÷0068÷÷BRO÷÷÷900 State Street;;Duxbury;MA;02586;USA××××××××a078e190b1f210af38595b14e956420bb866fb79572a39789c9291fa62a2ebeb4dcc8389e7968acb1b7b422468319ede3d465edc6150272ef171609807199c81e02fd4a66c43c98acbe287c4a76c1a7121f895937e694e8451a2b5a215c7b1287882b14e41ac330b9e1d6ebdd40f47289e84a2bf15a6c232f4f1fcdbbf5a8ac40ad18f187b5fc97b8b7c6ee30bf07b3fc29da88ac39d4e5b2317f2768e4a0d671d5eaa365db11623b8ee1a7ff479baad916077c5d0f4769c32c0d4f209e66158614a30c8b5c6c54717baa992bee536f6db78f7468f6f1743c4df039df2ca7dae206a03e278c80c806797ede92b03a33e30cbe2e01b6ca3559bb1d04573c0f22a×¶"
 
 
         // Parse the string with the expected "group delimiter"
@@ -123,7 +131,7 @@ class DigitalIDValidator private constructor(val context: Context){
 
             // Extract, build the signature
             //val signtureHex = group10
-            val signatureData = hexStringToByteArray(group10)
+            //val signatureData = hexStringToByteArray(group10) //Moved to the RSAVerify function.
 
             //Attempt to validate the assertion with any of the keys in the keychain
             val keychainIds = SettingMgr.getLocalKeySet()
@@ -251,20 +259,51 @@ class DigitalIDValidator private constructor(val context: Context){
 
 //region Helper functions
     fun RSAVerify(plainText : String, signaturer : String, publicKey : PublicKey) :  Boolean  {
-        return false
+        val publicSignature = Signature.getInstance("SHA512withRSA")
+        publicSignature.initVerify(publicKey)
+        publicSignature.update(plainText.toByteArray())
+
+        val signatureBytes = hexStringToByteArray(signaturer)
+
+        try {
+            return publicSignature.verify(signatureBytes)
+        } catch (e : Exception) {
+            e.printStackTrace()
+            return false
+        }
     }
 
     fun MD5(str : String) : String {
+        try {
+            val digest = MessageDigest.getInstance("MD5")
+            digest.update(str.toByteArray())
+
+            val messageDigest = digest.digest()
+
+            //Create Hex String
+            val hexString = StringBuilder()
+            for (aMessageDigest in messageDigest) {
+                val h = String.format("%02x", aMessageDigest)
+                hexString.append(h)
+            }
+            return hexString.toString()
+        } catch (e : Exception) {
+            e.printStackTrace()
+        }
+
         return ""
     }
 
     fun loadPublicKey(stored : String) : PublicKey {
         var editedKey = stored
-        editedKey = editedKey.replace("-----BEGIN PUBLIC KEY-----", "")
+        editedKey = editedKey.replace("-----BEGIN PUBLIC KEY-----\n", "")
         editedKey = editedKey.replace("-----END PUBLIC KEY-----", "")
 
-        val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
+//        val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
+        val data = Base64.decode(editedKey, Base64.DEFAULT)
+
         val spec = X509EncodedKeySpec(data)
+
         val fact = KeyFactory.getInstance("RSA")
 
         return fact.generatePublic(spec)
@@ -318,11 +357,11 @@ class DigitalIDValidator private constructor(val context: Context){
                     serverKeys.add(serverKeysJson.getInt(i))
                 }
                 Log.e("syncKeys", "Server has keys ${serverKeys}")
-                val localKeys = SettingMgr.getLocalKeySet() as ArrayList<Int>
+                val localKeys = SettingMgr.getLocalKeySet()
                 Log.e("syncKeys", "App has keys ${localKeys}")
                 var needKeyList = serverKeys.toList()
                 if (localKeys != null) {
-                    needKeyList = serverKeys.filter { s -> localKeys.contains(s.toInt()) }
+                    needKeyList = serverKeys.filter { s -> !localKeys.contains(s.toString()) }
                 }
                 Log.e("syncKeys", "App needs keys ${needKeyList}")
                 for (key in needKeyList) {
