@@ -137,7 +137,7 @@ class DigitalIDValidator private constructor(val context: Context){
 
                 if (storedKey != null) {
                     val pubKey = loadPublicKey(storedKey)
-                    validSignature = RSAVerify(assertionHash, group10, pubKey)
+                    validSignature = RSAVerify(assertedString, group10, pubKey)
                 }
 
                 if (validSignature)
