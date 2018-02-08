@@ -299,7 +299,7 @@ class DigitalIDValidator private constructor(val context: Context){
     //region Key management
     private fun syncKeys() {
         val endpoint = configuration["sync-keys-endpoint"]!!
-
+        SettingMgr.context = this.context // <---- might not be the best place for it, but it got this function working.
         Fuel.get(endpoint).responseJson { request, response, result ->
             result.fold({d ->
                 delegate?.validationServiceDidChange(true)
@@ -311,13 +311,14 @@ class DigitalIDValidator private constructor(val context: Context){
                 for (i in 0..serverKeysJson.length() - 1) {
                     serverKeys.add(serverKeysJson.getInt(i))
                 }
-
-                val localKeys = SettingMgr.getLocalKeySet()
+                Log.e("syncKeys", "Server has keys ${serverKeys}")
+                val localKeys = SettingMgr.getLocalKeySet() as ArrayList<Int>
+                Log.e("syncKeys", "App has keys ${localKeys}")
                 var needKeyList = serverKeys.toList()
                 if (localKeys != null) {
-                    needKeyList = serverKeys.filter { s -> localKeys.contains(s.toString()) }
+                    needKeyList = serverKeys.filter { s -> localKeys.contains(s.toInt()) }
                 }
-
+                Log.e("syncKeys", "App needs keys ${needKeyList}")
                 for (key in needKeyList) {
                     fetchKey(key)
                 }
