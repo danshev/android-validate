@@ -1,8 +1,6 @@
 ﻿package com.level_of_knowledge.validate
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.media.Image
 import android.util.Base64
 import android.util.Log
 import com.github.kittinunf.fuel.Fuel
@@ -12,11 +10,9 @@ import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import java.io.File
 import java.io.InputStream
-import java.nio.ByteBuffer
 import java.security.*
 import java.security.spec.X509EncodedKeySpec
 import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -99,22 +95,13 @@ class DigitalIDValidator private constructor(val context: Context){
     var serviceAvailable = false
     private var currentlyPosting = false
 
-/*    fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
-        SettingMgr.context = this.context
-        
-        if (barcode.format != Barcode.QR_CODE)
-            return Pair(null, null)*/
-    fun validate(barcode: Barcode?, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
-        /*SettingMgr.context = this.context
+    fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
 
         if (barcode.format != Barcode.QR_CODE)
             return Pair(null, null)
 
         // Get the data contained by the QR code and ensure it's string
-        val dataString = barcode.rawValue*/
-
-        val dataString = "A000000248010001000202BF×Smith÷Patrick O'Neil÷'19 84 02 23'÷'20 16 11 21'÷'20 21 02 23'÷USA÷MA÷T1000924÷B;19910901;20350301;;;×1÷0068÷÷BRO÷÷÷900 State Street;;Duxbury;MA;02586;USA××××××××a078e190b1f210af38595b14e956420bb866fb79572a39789c9291fa62a2ebeb4dcc8389e7968acb1b7b422468319ede3d465edc6150272ef171609807199c81e02fd4a66c43c98acbe287c4a76c1a7121f895937e694e8451a2b5a215c7b1287882b14e41ac330b9e1d6ebdd40f47289e84a2bf15a6c232f4f1fcdbbf5a8ac40ad18f187b5fc97b8b7c6ee30bf07b3fc29da88ac39d4e5b2317f2768e4a0d671d5eaa365db11623b8ee1a7ff479baad916077c5d0f4769c32c0d4f209e66158614a30c8b5c6c54717baa992bee536f6db78f7468f6f1743c4df039df2ca7dae206a03e278c80c806797ede92b03a33e30cbe2e01b6ca3559bb1d04573c0f22a×¶"
-
+        val dataString = barcode.rawValue
 
         // Parse the string with the expected "group delimiter"
         val groups = dataString.split(groupDelimiter, limit = expectedNumberOfGroups)
@@ -129,9 +116,8 @@ class DigitalIDValidator private constructor(val context: Context){
             //Build the assertion
             val assertedString = "$group1$groupDelimiter$group2"
 
-            // Extract, build the signature
-            //val signtureHex = group10
-            //val signatureData = hexStringToByteArray(group10) //Moved to the RSAVerify function.
+            // Extract the signature
+            val signature = group10
 
             //Attempt to validate the assertion with any of the keys in the keychain
             val keychainIds = SettingMgr.getLocalKeySet()
@@ -139,13 +125,12 @@ class DigitalIDValidator private constructor(val context: Context){
                 return (Pair(null, null))
 
             var validSignature = false
-
             for (keyId in keychainIds) {
                 val storedKey = getKey(keyId.toInt())
 
                 if (storedKey != null) {
                     val pubKey = loadPublicKey(storedKey)
-                    validSignature = RSAVerify(assertedString, group10, pubKey)
+                    validSignature = RSAVerify(assertedString, signature, pubKey)
                 }
 
                 if (validSignature)
@@ -229,7 +214,7 @@ class DigitalIDValidator private constructor(val context: Context){
         return Pair(null, null)
     }
 
-    fun performOnlineValidation(completion : (valid : Boolean, reason : String?) -> Void) {
+    fun performOnlineValidation(completion: (Boolean, String?) -> Int) {
         if (!currentlyPosting) {
             currentlyPosting = true
 
@@ -240,11 +225,14 @@ class DigitalIDValidator private constructor(val context: Context){
             Fuel.get("$endpoint$assertionHash").responseJson { request, response, result ->
                 currentlyPosting = false
 
-                result.fold({
-                    val jsonData = it.obj()
+                result.fold({d ->
+                    val jsonData = d.obj()
+
+                    Log.e("performOnlineValidation", "serialNumber --> ${jsonData["serialNumber"].toString()}")
+                    completion(true, null)
                     fetchProfileImage(jsonData["serialNumber"].toString())
-                }, {
-                    print("Error on performOnlineValidation")
+                }, { err ->
+                    Log.e("performOnlineValidation", "error --> ${err}")
                     completion(false, null)
                 })
             }
@@ -299,11 +287,9 @@ class DigitalIDValidator private constructor(val context: Context){
         editedKey = editedKey.replace("-----BEGIN PUBLIC KEY-----\n", "")
         editedKey = editedKey.replace("-----END PUBLIC KEY-----", "")
 
-//        val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
+//      val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
         val data = Base64.decode(editedKey, Base64.DEFAULT)
-
         val spec = X509EncodedKeySpec(data)
-
         val fact = KeyFactory.getInstance("RSA")
 
         return fact.generatePublic(spec)
@@ -356,14 +342,13 @@ class DigitalIDValidator private constructor(val context: Context){
                 for (i in 0..serverKeysJson.length() - 1) {
                     serverKeys.add(serverKeysJson.getInt(i))
                 }
-                Log.e("syncKeys", "Server has keys ${serverKeys}")
+
                 val localKeys = SettingMgr.getLocalKeySet()
-                Log.e("syncKeys", "App has keys ${localKeys}")
                 var needKeyList = serverKeys.toList()
                 if (localKeys != null) {
                     needKeyList = serverKeys.filter { s -> !localKeys.contains(s.toString()) }
                 }
-                Log.e("syncKeys", "App needs keys ${needKeyList}")
+
                 for (key in needKeyList) {
                     fetchKey(key)
                 }
@@ -376,7 +361,6 @@ class DigitalIDValidator private constructor(val context: Context){
     }
 
     fun getKey(withId : Int) : String? {
-
         val file = File(context.filesDir, "$withId.pub.pem")
         if (file.exists()) {
             val inputStream : InputStream = file.inputStream()
@@ -416,6 +400,13 @@ class DigitalIDValidator private constructor(val context: Context){
 
         Fuel.download(endpoint + serialNumber).destination { response, url ->
             File(context.filesDir, "thumbnail.jpg")
+        }.progress { readBytes, totalBytes ->
+            val fractionCompleted = readBytes.toFloat() / totalBytes.toFloat()
+
+            // TODO: Implement delegate and pass the fractionCompleted back
+            // this.delegate?.downloadProgressDidChange(to = fractionCompleted)
+            Log.d("fetchProfileImage", "progress: ${fractionCompleted.toString()}")
+
         }.response { request, response, result ->
             val (data, error) = result
             if (error != null) {
