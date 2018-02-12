@@ -5,8 +5,25 @@ import android.os.Bundle
 import android.util.Log
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import com.google.android.gms.vision.barcode.Barcode
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate {
+
+    // Delegate function handlers -->
+    override fun downloadProgressDidChange(to: Float) {
+        // Progress of the image download (for use with a visual progress indicator, for User feedback)
+        Log.e("downloadProgressDidChange", "progress: ${to}")
+    }
+
+    override fun didReceiveProfileImage(profileImage: Bitmap) {
+        Log.e("didReceiveProfileImage", "downloaded image")
+    }
+
+    override fun validationServiceDidChange(available: Boolean) {
+        Log.e("validationServiceDidChange", "Online service available? ${available}")
+    }
+    // <-- Delegate function handlers
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -14,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
         val test = DigitalIDValidator.createInstance(applicationContext)
         SettingMgr.context = applicationContext
+        test?.delegate = this
 
         val useOnlineValidation = true
 

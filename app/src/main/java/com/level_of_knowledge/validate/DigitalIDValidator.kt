@@ -15,10 +15,14 @@ import java.security.spec.X509EncodedKeySpec
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+
+
 
 interface DigitalIDValidatorDelegate {
-    fun downloadProgressDidChange(to : Double)
-    fun didReceiveProfileImage()
+    fun downloadProgressDidChange(to: Float)
+    fun didReceiveProfileImage(profileImage: Bitmap)
     fun validationServiceDidChange(available: Boolean)
 }
 
@@ -227,12 +231,9 @@ class DigitalIDValidator private constructor(val context: Context){
 
                 result.fold({d ->
                     val jsonData = d.obj()
-
-                    Log.e("performOnlineValidation", "serialNumber --> ${jsonData["serialNumber"].toString()}")
-                    completion(true, null)
                     fetchProfileImage(jsonData["serialNumber"].toString())
+                    completion(true, null)
                 }, { err ->
-                    Log.e("performOnlineValidation", "error --> ${err}")
                     completion(false, null)
                 })
             }
@@ -261,7 +262,7 @@ class DigitalIDValidator private constructor(val context: Context){
         }
     }
 
-    fun MD5(str : String) : String {
+    fun MD5(str: String): String {
         try {
             val digest = MessageDigest.getInstance("MD5")
             digest.update(str.toByteArray())
@@ -287,7 +288,6 @@ class DigitalIDValidator private constructor(val context: Context){
         editedKey = editedKey.replace("-----BEGIN PUBLIC KEY-----\n", "")
         editedKey = editedKey.replace("-----END PUBLIC KEY-----", "")
 
-//      val data = Base64.decode(editedKey.toByteArray(), Base64.DEFAULT)
         val data = Base64.decode(editedKey, Base64.DEFAULT)
         val spec = X509EncodedKeySpec(data)
         val fact = KeyFactory.getInstance("RSA")
@@ -399,25 +399,25 @@ class DigitalIDValidator private constructor(val context: Context){
         val endpoint = configuration["fetch-profile-image-endpoint"]
 
         Fuel.download(endpoint + serialNumber).destination { response, url ->
-            File(context.filesDir, "thumbnail.jpg")
-        }.progress { readBytes, totalBytes ->
-            val fractionCompleted = readBytes.toFloat() / totalBytes.toFloat()
-
-            // TODO: Implement delegate and pass the fractionCompleted back
-            // this.delegate?.downloadProgressDidChange(to = fractionCompleted)
-            Log.d("fetchProfileImage", "progress: ${fractionCompleted.toString()}")
-
+            File.createTempFile("profileImage", ".jpg")
         }.response { request, response, result ->
             val (data, error) = result
             if (error != null) {
-                print(error)
+                Log.e("fetchProfileImage", "error: ${error}")
             } else {
-                result.fold({bytes ->
-                    delegate?.didReceiveProfileImage()
+                result.fold({ bytes ->
+
+                    Log.e("fetchProfileImage", "bytes --> ${bytes.indices}")
+                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+                    // delegate?.didReceiveProfileImage(bmp)
                 }, {err ->
-                    print(error)
+                    Log.e("fetchProfileImage", "error: ${err}")
                 })
             }
+        }.progress { readBytes, totalBytes ->
+            val fractionCompleted = readBytes.toFloat() / totalBytes.toFloat()
+            this.delegate?.downloadProgressDidChange(to = fractionCompleted)
         }
     }
 
