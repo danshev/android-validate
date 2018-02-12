@@ -1,6 +1,8 @@
 ﻿package com.level_of_knowledge.validate
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
 import com.github.kittinunf.fuel.Fuel
@@ -10,13 +12,14 @@ import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import java.io.File
 import java.io.InputStream
-import java.security.*
+import java.security.KeyFactory
+import java.security.MessageDigest
+import java.security.PublicKey
+import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-import android.graphics.BitmapFactory
-import android.graphics.Bitmap
 
 
 
@@ -329,6 +332,7 @@ class DigitalIDValidator private constructor(val context: Context){
     //endregion
     //region Key management
     private fun syncKeys() {
+        Log.d("DigiID", "syncKeys has been called")
         val endpoint = configuration["sync-keys-endpoint"]!!
         SettingMgr.context = this.context // <---- might not be the best place for it, but it got this function working.
         Fuel.get(endpoint).responseJson { request, response, result ->

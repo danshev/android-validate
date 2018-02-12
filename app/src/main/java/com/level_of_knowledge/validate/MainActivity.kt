@@ -1,33 +1,49 @@
 package com.level_of_knowledge.validate
 
-import android.support.v7.app.AppCompatActivity
-import android.os.Bundle
-import android.util.Log
-import com.level_of_knowledge.validate.Utils.SettingMgr
-import com.google.android.gms.vision.barcode.Barcode
-import android.graphics.BitmapFactory
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.os.Bundle
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
+import android.support.v7.app.AppCompatActivity
+import android.util.Log
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.widget.Toast
+import com.google.android.gms.vision.CameraSource
+import com.google.android.gms.vision.barcode.Barcode
+import com.google.android.gms.vision.barcode.BarcodeDetector
+import com.level_of_knowledge.validate.Utils.SettingMgr
 
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate {
+    val REQUEST_CAMERA = 1;
+
+    val _tagProgressChange = "downloadProgressChange"
+    val _tagRecProfImage = "didReceiveProfileImage"
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
         // Progress of the image download (for use with a visual progress indicator, for User feedback)
-        Log.e("downloadProgressDidChange", "progress: ${to}")
+        Log.e(_tagProgressChange, "progress: ${to}")
     }
 
     override fun didReceiveProfileImage(profileImage: Bitmap) {
-        Log.e("didReceiveProfileImage", "downloaded image")
+        Log.e(_tagRecProfImage, "downloaded image")
     }
 
     override fun validationServiceDidChange(available: Boolean) {
-        Log.e("validationServiceDidChange", "Online service available? ${available}")
+        Log.e(_tagProgressChange, "Online service available? ${available}")
     }
     // <-- Delegate function handlers
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // request camera permission
+
+        requestPermissions()
 
         val test = DigitalIDValidator.createInstance(applicationContext)
         SettingMgr.context = applicationContext
@@ -53,5 +69,53 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate {
                 Log.e("main", "secondary QR result: ${validate2}")
             }
         }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if(requestCode == REQUEST_CAMERA && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            startCamera()
+        }
+    }
+
+    private fun requestPermissions(){
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS)) {
+                Toast.makeText(this, "Error: Unable to request camera permission.", Toast.LENGTH_SHORT).show()
+            } else {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
+            }
+        } else{
+            startCamera()
+        }
+    }
+
+    private fun startCamera(){
+        val cameraPreview = findViewById<SurfaceView>(R.id.camera_preview)
+
+        val barcodeDetector = BarcodeDetector.Builder(this)
+                .setBarcodeFormats(Barcode.QR_CODE)
+                .build()
+
+        val cameraSource = CameraSource.Builder(this, barcodeDetector)
+                .setRequestedPreviewSize(640, 480)
+                .build()
+
+        // attach callback methods to listeners
+
+        cameraPreview.holder.addCallback(object : SurfaceHolder.Callback{
+            override fun surfaceChanged(p0: SurfaceHolder?, p1: Int, p2: Int, p3: Int) {
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+
+            override fun surfaceDestroyed(p0: SurfaceHolder?) {
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+
+            override fun surfaceCreated(p0: SurfaceHolder?) {
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+        })
     }
 }
