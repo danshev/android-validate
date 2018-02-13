@@ -44,6 +44,8 @@ class DigitalIDValidator private constructor(val context: Context){
         }
     }
 
+    val TAG = "DigitalIDVal"
+
     val configuration = Constant.configuration
 
     var delegate : DigitalIDValidatorDelegate? = null
@@ -103,9 +105,10 @@ class DigitalIDValidator private constructor(val context: Context){
     private var currentlyPosting = false
 
     fun validate(barcode: Barcode, usingValidationService : Boolean = true) : Pair<Boolean?, Boolean?> {
-
-        if (barcode.format != Barcode.QR_CODE)
+        if (barcode.format != Barcode.QR_CODE){
+            Log.e(TAG, "Error: Barcode format invalid")
             return Pair(null, null)
+        }
 
         // Get the data contained by the QR code and ensure it's string
         val dataString = barcode.rawValue
@@ -128,8 +131,10 @@ class DigitalIDValidator private constructor(val context: Context){
 
             //Attempt to validate the assertion with any of the keys in the keychain
             val keychainIds = SettingMgr.getLocalKeySet()
-            if (keychainIds == null)
+            if (keychainIds == null){
+                Log.e(TAG, "Error: key chain IDs are null")
                 return (Pair(null, null))
+            }
 
             var validSignature = false
             for (keyId in keychainIds) {
@@ -153,6 +158,7 @@ class DigitalIDValidator private constructor(val context: Context){
                 val group1fields = group1.split(fieldDelimiter, limit = expectedNumberGroup1Fields)
 
                 if (group1fields.count() != expectedNumberGroup1Fields) {
+                    Log.e(TAG, "Error: group 1 fields count unexpected result: " + group1fields.count())
                     return Pair(null, null)
                 }
 
@@ -160,6 +166,7 @@ class DigitalIDValidator private constructor(val context: Context){
                 val group2fields = group2.split(fieldDelimiter, limit = expectedNumberGroup2Fields)
 
                 if (group2fields.count() != expectedNumberGroup2Fields) {
+                    Log.e(TAG, "Error: group 2 fields count unexpected result: " + group2fields.count())
                     return  Pair(null, null)
                 }
 
@@ -218,6 +225,8 @@ class DigitalIDValidator private constructor(val context: Context){
             }
         }
 
+        Log.e(TAG, "Error: Groups count is not 12 or 1. Returning: " + groups.count() +
+                " usingValidationService: " + usingValidationService + " signatureVerified: " + signatureVerified)
         return Pair(null, null)
     }
 
@@ -231,12 +240,18 @@ class DigitalIDValidator private constructor(val context: Context){
 
             Fuel.get("$endpoint$assertionHash").responseJson { request, response, result ->
                 currentlyPosting = false
+                Log.d(TAG, response.responseMessage);
 
                 result.fold({d ->
+                    Log.d(TAG, response.responseMessage);
                     val jsonData = d.obj()
                     fetchProfileImage(jsonData["serialNumber"].toString())
+
+                    Log.d(TAG, jsonData.toString())
+
                     completion(true, null)
                 }, { err ->
+                    Log.d(TAG, response.responseMessage);
                     completion(false, null)
                 })
             }

@@ -6,9 +6,21 @@
     android:layout_height="match_parent"
     tools:context="com.level_of_knowledge.validate.MainActivity">
 
-    <SurfaceView
+    <me.dm7.barcodescanner.zxing.ZXingScannerView
         android:id="@+id/camera_preview"
         android:layout_width="match_parent"
-        android:layout_height="480px" />
+        android:layout_height="match_parent"/>
+
+
+    <Switch
+        android:id="@+id/switch_validation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:background="@color/colorPrimary"
+        android:layout_marginBottom="20dp"
+        android:padding="10dp"
+        android:text="@string/use_validation_service" />
 
 </RelativeLayout>

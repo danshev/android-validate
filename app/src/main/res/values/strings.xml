@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Validate</string>
+    <string name="use_validation_service">Use validation service?</string>
 </resources>
