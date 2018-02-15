@@ -243,7 +243,7 @@ class DigitalIDValidator private constructor(val context: Context){
                 Log.d(TAG, response.responseMessage);
 
                 result.fold({d ->
-                    Log.d(TAG, response.responseMessage);
+                    Log.d(TAG, response.responseMessage)
                     val jsonData = d.obj()
                     fetchProfileImage(jsonData["serialNumber"].toString())
 

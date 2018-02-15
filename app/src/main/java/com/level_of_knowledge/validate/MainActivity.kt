@@ -1,6 +1,7 @@
 package com.level_of_knowledge.validate
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -8,20 +9,19 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import android.widget.Switch
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.widget.Toast
+import com.google.android.gms.vision.CameraSource
+import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
-import com.google.zxing.Result
-import com.level_of_knowledge.validate.Utils.SettingMgr
-import me.dm7.barcodescanner.zxing.ZXingScannerView
+import com.google.android.gms.vision.barcode.BarcodeDetector
 
-class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate, ZXingScannerView.ResultHandler {
+class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     val REQUEST_CAMERA = 1;
 
     val _tagProgressChange = "downloadProgressChange"
     val _tagRecProfImage = "didReceiveProfileImage"
-
-    lateinit var scannerView : ZXingScannerView
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
@@ -45,19 +45,14 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate, ZXingScann
         // request camera permission
 
         requestPermissions()
-
-        scannerView = findViewById(R.id.camera_preview)
-        scannerView.setResultHandler(this)
     }
 
     override fun onResume(){
         super.onResume()
-        scannerView.startCamera()
     }
 
     override fun onStop(){
         super.onStop()
-        scannerView.stopCamera()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -75,18 +70,73 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate, ZXingScann
             } else {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
             }
+        }else{
+            startCamera()
         }
     }
 
-    override fun handleResult(p0: Result?) {
+    private fun startCamera(){
+        val cameraPreview = findViewById<SurfaceView>(R.id.camera_preview)
+
+        val barcodeDetector = BarcodeDetector.Builder(this)
+                .setBarcodeFormats(Barcode.QR_CODE)
+                .build()
+
+        if(!barcodeDetector.isOperational){
+            Log.d("main", "Barcode detector not operational")
+        }
+
+        barcodeDetector.setProcessor(object : Detector.Processor<Barcode>{
+            override fun receiveDetections(p0: Detector.Detections<Barcode>?) {
+                val arr = p0!!.detectedItems
+
+                if(arr == null){
+                    System.out.println("arr is null")
+                }
+
+                if(arr.size() > 0){
+                    for(i in 0..arr.size()) run {
+                        Log.d("main", arr.toString())
+                    }
+                }
+            }
+
+            override fun release() {
+
+            }
+        })
+
+        val cameraSource = CameraSource.Builder(this, barcodeDetector)
+                .setAutoFocusEnabled(true)
+                .setFacing(CameraSource.CAMERA_FACING_BACK)
+                .setRequestedFps(24f)
+                .setRequestedPreviewSize(1600, 1024)
+                .build()
+
+        // attach callback methods to listeners
+
+        cameraPreview.holder.addCallback(object : SurfaceHolder.Callback{
+            override fun surfaceChanged(p0: SurfaceHolder?, p1: Int, p2: Int, p3: Int) {
+            }
+
+            override fun surfaceDestroyed(p0: SurfaceHolder?) {
+                cameraSource.stop()
+            }
+
+            @SuppressLint("MissingPermission")
+            override fun surfaceCreated(p0: SurfaceHolder?) {
+                cameraSource.start(cameraPreview.holder)
+            }
+        })
+    }
+
+    /*override fun handleResult(p0: Result?) {
         Log.d("QRCodeScanner", p0?.getText())
         Log.d("QRCodeScanner", p0?.getBarcodeFormat().toString())
 
         val fakeBarcode = Barcode();
         fakeBarcode.rawValue = p0?.text
         fakeBarcode.format = Barcode.QR_CODE
-
-        scannerView.resumeCameraPreview(this);
 
         val test = DigitalIDValidator.createInstance(applicationContext)
         SettingMgr.context = applicationContext
@@ -114,6 +164,6 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate, ZXingScann
             }
 
         }
-    }
+    }*/
 
 }
