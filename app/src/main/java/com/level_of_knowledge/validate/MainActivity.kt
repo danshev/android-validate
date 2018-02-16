@@ -11,12 +11,15 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.View
 import android.widget.Switch
+import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.vision.CameraSource
 import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
+import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
@@ -26,6 +29,8 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     val _tagProgressChange = "downloadProgressChange"
     val _tagRecProfImage = "didReceiveProfileImage"
+
+    var digIDVal : DigitalIDValidator? = null
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
@@ -47,6 +52,10 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         setContentView(R.layout.activity_main)
 
         // request camera permission
+
+        digIDVal = DigitalIDValidator.createInstance(applicationContext)
+        SettingMgr.context = applicationContext
+        digIDVal?.delegate = this
 
         requestPermissions()
     }
@@ -133,14 +142,9 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         barcode.rawValue = str
         barcode.format = Barcode.QR_CODE
 
-        val digIDVal = DigitalIDValidator.createInstance(applicationContext)
-        SettingMgr.context = applicationContext
-        digIDVal?.delegate = this
-
         if (digIDVal != null) {
             /*val validate1 = digIDVal.validate(barcode, usingValidationService = useOnlineValidation)
             Log.e("main", "primary QR result: ${validate1}")
-
             if(validate1.first != null && validate1.first == true){
                 if (useOnlineValidation) {
                     digIDVal.performOnlineValidation { valid, reason ->
@@ -157,7 +161,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
             val useOnlineValidation = findViewById<Switch>(R.id.switch_validation).isChecked
 
-            val (primaryQrResult, secondaryQrResult) = digIDVal.validate(barcode, usingValidationService = useOnlineValidation)
+            val (primaryQrResult, secondaryQrResult) = digIDVal!!.validate(barcode, usingValidationService = useOnlineValidation)
 
             primaryQrResult?.let {
                 if (it) {
@@ -167,15 +171,18 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                         Log.d(TAG, "false")
                     }
                     if (useOnlineValidation) {
-                        digIDVal.performOnlineValidation { valid, reason ->
+                        digIDVal!!.performOnlineValidation { valid, reason ->
                             Log.e("main", "online validation result: ${valid}")
+                            showResult(valid, reason)
                         }
                     } else {
                         secondaryQrResult?.let {
                             if (it) {
                                 print("Secondary QR data is VALID")
+                                showResult(true, "Success!")
                             } else {
                                 print("Secondary QR data is invalid")
+                                showResult(false, Constant.configuration["invalid-id-error-message"])
                             }
                         }
                     }
@@ -184,5 +191,20 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                 }
             }
         }
+    }
+
+    fun showResult(success : Boolean, result : String?){
+        val view = View.inflate(this, R.layout.toast_layout, null)
+        view.findViewById<TextView>(R.id.toast_text).text = result
+
+        if(success){
+            view.setBackgroundResource(R.drawable.background_success)
+        }else{
+            view.setBackgroundResource(R.drawable.background_error)
+        }
+
+        val toast = Toast(this)
+        toast.view = view
+        toast.show()
     }
 }

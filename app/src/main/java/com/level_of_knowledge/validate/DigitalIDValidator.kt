@@ -20,7 +20,7 @@ import java.security.spec.X509EncodedKeySpec
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-
+import kotlin.properties.Delegates
 
 
 interface DigitalIDValidatorDelegate {
@@ -96,7 +96,10 @@ class DigitalIDValidator private constructor(val context: Context){
     val expectedNumberGroup10Fields = 1
 
     // Holder variables for working values
-    var signatureVerified = false
+    var signatureVerified by Delegates.observable(false){
+        prop, old, new->
+        println("$old -> $new")
+    }
     lateinit var assertionHash : String
     var digitalWatermark : Int = -1 //Check
     lateinit var customerData : Customer
@@ -230,7 +233,7 @@ class DigitalIDValidator private constructor(val context: Context){
         return Pair(null, null)
     }
 
-    fun performOnlineValidation(completion: (Boolean, String?) -> Int) {
+    fun performOnlineValidation(completion: (Boolean, String?) -> Unit) {
         if (!currentlyPosting) {
             currentlyPosting = true
 
@@ -252,7 +255,10 @@ class DigitalIDValidator private constructor(val context: Context){
                     completion(true, null)
                 }, { err ->
                     Log.d(TAG, response.responseMessage);
-                    completion(false, null)
+
+                    // detemine response here
+
+                    completion(false, invalidMsg)
                 })
             }
         }
