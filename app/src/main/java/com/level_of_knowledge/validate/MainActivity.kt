@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
@@ -32,6 +33,8 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     val _tagProgressChange = "downloadProgressChange"
     val _tagRecProfImage = "didReceiveProfileImage"
+
+    var displayingResult = false;
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
@@ -154,14 +157,28 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                     if (useOnlineValidation) {
                         digIDVal!!.performOnlineValidation { valid, reason ->
                             Log.e("main", "online validation result: ${valid}")
-                            showResult(valid, reason)
+                            runOnUiThread(object : Runnable{
+                                override fun run() {
+                                    showResult(valid, str)
+                                }
+                            })
                         }
                     } else {
                         secondaryQrResult?.let {
                             if (it) {
                                 Log.d("main", " **** ---> Both QR codes are VALID!")
+                                runOnUiThread(object : Runnable{
+                                    override fun run() {
+                                        showResult(true, str)
+                                    }
+                                })
                             } else {
                                 Log.e("main", " **** ---> Secondary QR data is invalid")
+                                runOnUiThread(object : Runnable{
+                                    override fun run() {
+                                        showResult(false, Constant.configuration["invalid-id-error-message"])
+                                    }
+                                })
                             }
                         }
                     }
@@ -174,6 +191,11 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     }
 
     fun showResult(success : Boolean, result : String?){
+        if(displayingResult)
+            return
+
+        displayingResult = true
+
         val view = View.inflate(this, R.layout.toast_layout, null)
         view.findViewById<TextView>(R.id.toast_text).text = result
 
@@ -185,6 +207,15 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
         val toast = Toast(this)
         toast.view = view
+        toast.duration = Toast.LENGTH_LONG
         toast.show()
+
+        val handler = Handler()
+        handler.postDelayed(object : Runnable{
+            override fun run() {
+                displayingResult = false
+            }
+
+        }, 2000)
     }
 }

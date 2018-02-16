@@ -253,7 +253,10 @@ class DigitalIDValidator private constructor(val context: Context){
                     completion(true, null)
                 }, { err ->
                     Log.d(TAG, response.responseMessage)
-                    completion(false, null)
+
+                    // TODO: determine if it is a server error or invalid ID
+
+                    completion(false, invalidMsg)
                 })
             }
         }
