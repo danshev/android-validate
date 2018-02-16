@@ -225,8 +225,6 @@ class DigitalIDValidator private constructor(val context: Context){
             }
         }
 
-        Log.e(TAG, "Error: Groups count is not 12 or 1. Returning: " + groups.count() +
-                " usingValidationService: " + usingValidationService + " signatureVerified: " + signatureVerified)
         return Pair(null, null)
     }
 
@@ -240,7 +238,7 @@ class DigitalIDValidator private constructor(val context: Context){
 
             Fuel.get("$endpoint$assertionHash").responseJson { request, response, result ->
                 currentlyPosting = false
-                Log.d(TAG, response.responseMessage);
+                Log.d(TAG, response.responseMessage)
 
                 result.fold({d ->
                     Log.d(TAG, response.responseMessage)
@@ -251,7 +249,7 @@ class DigitalIDValidator private constructor(val context: Context){
 
                     completion(true, null)
                 }, { err ->
-                    Log.d(TAG, response.responseMessage);
+                    Log.d(TAG, response.responseMessage)
                     completion(false, null)
                 })
             }
@@ -325,19 +323,17 @@ class DigitalIDValidator private constructor(val context: Context){
         return data
     }
 
-    private fun calculateDigitalWatermark(fromHash : String) : Int {
+    private fun calculateDigitalWatermark(fromHash: String): Int {
 
         val numberString = fromHash.replace(regex = Regex("[^0-9]"), replacement =  "")
-        val sum = numberString.map { it.toInt() }.sum()
-
+        val sum = numberString.map { it.toString().toInt() }.sum()
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         val day = calendar.get(Calendar.DAY_OF_MONTH)
-        val month = calendar.get(Calendar.MONTH)
+        val month = calendar.get(Calendar.MONTH) + 1
         val year = calendar.get(Calendar.YEAR)
 
         return sum * hour * day * month * year
-
     }
 
     private fun convertBCDdate(dateString : String) : Date {
