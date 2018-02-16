@@ -25,12 +25,13 @@ import com.level_of_knowledge.validate.Utils.SettingMgr
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     val TAG = "Main"
 
-    val REQUEST_CAMERA = 1;
+    val REQUEST_CAMERA = 1
+
+    lateinit var digIDVal: DigitalIDValidator
+    var currentlyValidating = false
 
     val _tagProgressChange = "downloadProgressChange"
     val _tagRecProfImage = "didReceiveProfileImage"
-
-    var digIDVal : DigitalIDValidator? = null
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
@@ -52,8 +53,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         setContentView(R.layout.activity_main)
 
         // request camera permission
-
-        digIDVal = DigitalIDValidator.createInstance(applicationContext)
+        digIDVal = DigitalIDValidator.createInstance(applicationContext)!!
         SettingMgr.context = applicationContext
         digIDVal?.delegate = this
 
@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         barcodeDetector.setProcessor(object : Detector.Processor<Barcode>{
             override fun receiveDetections(detections: Detector.Detections<Barcode>) {
                 val barcodes = detections.detectedItems
-                if (barcodes.size() != 0) {
+                if (barcodes.size() != 0 && !currentlyValidating) {
                     //Log.d("main", barcodes.valueAt(0).displayValue)
                     validateBardcode(barcodes.valueAt(0).displayValue)
                 }
@@ -137,39 +137,20 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         })
     }
 
-    fun validateBardcode(str : String){
+    fun validateBardcode(str : String) {
+        currentlyValidating = true
+
         val barcode = Barcode()
         barcode.rawValue = str
         barcode.format = Barcode.QR_CODE
 
         if (digIDVal != null) {
-            /*val validate1 = digIDVal.validate(barcode, usingValidationService = useOnlineValidation)
-            Log.e("main", "primary QR result: ${validate1}")
-            if(validate1.first != null && validate1.first == true){
-                if (useOnlineValidation) {
-                    digIDVal.performOnlineValidation { valid, reason ->
-                        Log.e("main", "online validation result: ${valid}")
-                    }
-                } else {
-                    //barcode.rawValue = digIDVal.digitalWatermark.toString()
-                    val validate2 = digIDVal.validate(barcode, usingValidationService = useOnlineValidation)
-                    Log.e("main", "secondary QR result: ${validate2}")
-                }
-            }else{
-                Log.e("Main", "Error: validation failure. Cannot proceed to check QR code.")
-            }*/
 
             val useOnlineValidation = findViewById<Switch>(R.id.switch_validation).isChecked
-
-            val (primaryQrResult, secondaryQrResult) = digIDVal!!.validate(barcode, usingValidationService = useOnlineValidation)
+            val (primaryQrResult, secondaryQrResult) = digIDVal.validate(barcode, usingValidationService = useOnlineValidation)
 
             primaryQrResult?.let {
                 if (it) {
-                    if(primaryQrResult){
-                        Log.d(TAG, "true")
-                    }else{
-                        Log.d(TAG, "false")
-                    }
                     if (useOnlineValidation) {
                         digIDVal!!.performOnlineValidation { valid, reason ->
                             Log.e("main", "online validation result: ${valid}")
@@ -178,19 +159,18 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                     } else {
                         secondaryQrResult?.let {
                             if (it) {
-                                print("Secondary QR data is VALID")
-                                showResult(true, "Success!")
+                                Log.d("main", " **** ---> Both QR codes are VALID!")
                             } else {
-                                print("Secondary QR data is invalid")
-                                showResult(false, Constant.configuration["invalid-id-error-message"])
+                                Log.e("main", " **** ---> Secondary QR data is invalid")
                             }
                         }
                     }
                 } else {
-                    print("Primary QR data does not have a valid digital signature")
+                    Log.e("main", " **** ---> Primary QR data does not have a valid digital signature")
                 }
             }
         }
+        currentlyValidating = false
     }
 
     fun showResult(success : Boolean, result : String?){
