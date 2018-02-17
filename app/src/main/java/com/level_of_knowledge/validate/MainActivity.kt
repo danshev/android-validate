@@ -22,7 +22,10 @@ import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
 import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
+import java.util.*
+import java.util.Calendar.*
 
+@Suppress("DEPRECATED_IDENTITY_EQUALS")
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     val TAG = "Main"
 
@@ -157,28 +160,21 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                     if (useOnlineValidation) {
                         digIDVal!!.performOnlineValidation { valid, reason ->
                             Log.e("main", "online validation result: ${valid}")
-                            runOnUiThread(object : Runnable{
-                                override fun run() {
-                                    showResult(valid, str)
-                                }
-                            })
+                            runOnUiThread {
+                                if(valid)
+                                    showResult(digIDVal.customerData)
+                                else
+                                    showResult(reason)
+                            }
                         }
                     } else {
                         secondaryQrResult?.let {
                             if (it) {
                                 Log.d("main", " **** ---> Both QR codes are VALID!")
-                                runOnUiThread(object : Runnable{
-                                    override fun run() {
-                                        showResult(true, str)
-                                    }
-                                })
+                                runOnUiThread { showResult( digIDVal.customerData) }
                             } else {
                                 Log.e("main", " **** ---> Secondary QR data is invalid")
-                                runOnUiThread(object : Runnable{
-                                    override fun run() {
-                                        showResult(false, Constant.configuration["invalid-id-error-message"])
-                                    }
-                                })
+                                runOnUiThread { showResult(Constant.configuration["invalid-id-error-message"]) }
                             }
                         }
                     }
@@ -190,7 +186,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         currentlyValidating = false
     }
 
-    fun showResult(success : Boolean, result : String?){
+    fun showResult(result : String?){
         if(displayingResult)
             return
 
@@ -198,12 +194,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
         val view = View.inflate(this, R.layout.toast_layout, null)
         view.findViewById<TextView>(R.id.toast_text).text = result
-
-        if(success){
-            view.setBackgroundResource(R.drawable.background_success)
-        }else{
-            view.setBackgroundResource(R.drawable.background_error)
-        }
+        view.setBackgroundResource(R.drawable.background_error)
 
         val toast = Toast(this)
         toast.view = view
@@ -211,11 +202,48 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         toast.show()
 
         val handler = Handler()
-        handler.postDelayed(object : Runnable{
-            override fun run() {
-                displayingResult = false
-            }
+        handler.postDelayed({ displayingResult = false }, 2000)
+    }
 
-        }, 2000)
+    fun showResult(result : DigitalIDValidator.Customer){
+        if(displayingResult)
+            return
+
+        displayingResult = true
+
+        val view = View.inflate(this, R.layout.toast_layout, null)
+        val diffInYears = getDiffYears(result.dateOfBirth, Date(System.currentTimeMillis()))
+
+        val str =
+                result.givenNames + "\n" +
+                result.familyName + "\n\n" +
+                result.gender + " " + diffInYears
+
+        view.findViewById<TextView>(R.id.toast_text).text = str
+        view.setBackgroundResource(R.drawable.background_success)
+
+        val toast = Toast(this)
+        toast.view = view
+        toast.duration = Toast.LENGTH_LONG
+        toast.show()
+
+        val handler = Handler()
+        handler.postDelayed({ displayingResult = false }, 2000)
+    }
+
+    private fun getDiffYears(first: Date, last: Date): Int {
+        val a = getCalendar(first)
+        val b = getCalendar(last)
+        var diff = b.get(YEAR) - a.get(YEAR)
+        if (a.get(MONTH) > b.get(MONTH) || a.get(MONTH) === b.get(MONTH) && a.get(DATE) > b.get(DATE)) {
+            diff--
+        }
+        return diff
+    }
+
+    private fun getCalendar(date: Date): Calendar {
+        val cal = Calendar.getInstance(Locale.US)
+        cal.time = date
+        return cal
     }
 }
