@@ -420,27 +420,18 @@ class DigitalIDValidator private constructor(val context: Context){
         val endpoint = configuration["fetch-profile-image-endpoint"]
 
         Fuel.download(endpoint + serialNumber).destination { response, url ->
-            File.createTempFile("profileImage", ".jpg")
+            File("${context.filesDir}profileImage.jpg")
+        }.progress { readBytes, totalBytes ->
+            val fractionCompleted = readBytes.toFloat() / totalBytes.toFloat()
+            this.delegate?.downloadProgressDidChange(to = fractionCompleted)
         }.response { request, response, result ->
             val (data, error) = result
             if (error != null) {
                 Log.e("fetchProfileImage", "error: ${error}")
             } else {
-                result.fold({ bytes ->
-
-                    Log.e("fetchProfileImage", "bytes --> ${bytes.indices}")
-                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
-                    // delegate?.didReceiveProfileImage(bmp)
-                }, {err ->
-                    Log.e("fetchProfileImage", "error: ${err}")
-                })
+                val bmp = BitmapFactory.decodeFile("${context.filesDir}profileImage.jpg")
+                delegate?.didReceiveProfileImage(bmp)
             }
-        }.progress { readBytes, totalBytes ->
-            val fractionCompleted = readBytes.toFloat() / totalBytes.toFloat()
-            this.delegate?.downloadProgressDidChange(to = fractionCompleted)
         }
     }
-
-    //endregion
 }

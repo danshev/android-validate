@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     var displayingResult = false;
 
+    lateinit var cameraSource : CameraSource
+    lateinit var cameraPreview : SurfaceView
+
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
         // Progress of the image download (for use with a visual progress indicator, for User feedback)
@@ -95,7 +98,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     }
 
     private fun startCamera(){
-        val cameraPreview = findViewById<SurfaceView>(R.id.camera_preview)
+        cameraPreview = findViewById<SurfaceView>(R.id.camera_preview)
 
         val barcodeDetector = BarcodeDetector.Builder(this)
                 .setBarcodeFormats(Barcode.QR_CODE)
@@ -119,7 +122,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
             }
         })
 
-        val cameraSource = CameraSource.Builder(this, barcodeDetector)
+        cameraSource = CameraSource.Builder(this, barcodeDetector)
                 .setAutoFocusEnabled(true)
                 .setFacing(CameraSource.CAMERA_FACING_BACK)
                 .setRequestedFps(24f)
@@ -141,6 +144,8 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                 cameraSource.start(cameraPreview.holder)
             }
         })
+
+        cameraPreview.invalidate()
     }
 
     fun validateBardcode(str : String) {
@@ -205,11 +210,13 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         handler.postDelayed({ displayingResult = false }, 2000)
     }
 
+    @SuppressLint("MissingPermission")
     fun showResult(result : DigitalIDValidator.Customer){
         if(displayingResult)
             return
 
         displayingResult = true
+        cameraSource.stop()
 
         val view = View.inflate(this, R.layout.toast_layout, null)
         val diffInYears = getDiffYears(result.dateOfBirth, Date(System.currentTimeMillis()))
@@ -228,7 +235,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         toast.show()
 
         val handler = Handler()
-        handler.postDelayed({ displayingResult = false }, 2000)
+        handler.postDelayed({ displayingResult = false; cameraSource.start(cameraPreview.holder) }, 2000)
     }
 
     private fun getDiffYears(first: Date, last: Date): Int {
