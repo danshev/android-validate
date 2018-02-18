@@ -4,10 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.SurfaceHolder
@@ -212,10 +215,6 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     @SuppressLint("MissingPermission")
     fun showResult(result : DigitalIDValidator.Customer){
-        if(displayingResult)
-            return
-
-        displayingResult = true
         cameraSource.stop()
 
         val view = View.inflate(this, R.layout.toast_layout, null)
@@ -229,13 +228,14 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         view.findViewById<TextView>(R.id.toast_text).text = str
         view.setBackgroundResource(R.drawable.background_success)
 
-        val toast = Toast(this)
-        toast.view = view
-        toast.duration = Toast.LENGTH_LONG
-        toast.show()
+        val alertDialog = AlertDialog.Builder(this).create()
 
-        val handler = Handler()
-        handler.postDelayed({ displayingResult = false; cameraSource.start(cameraPreview.holder) }, 2000)
+        view.setOnClickListener { cameraSource.start(cameraPreview.holder); alertDialog.dismiss() }
+
+        alertDialog.setView(view)
+        alertDialog.setCancelable(false)
+        alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+        alertDialog.show()
     }
 
     private fun getDiffYears(first: Date, last: Date): Int {
