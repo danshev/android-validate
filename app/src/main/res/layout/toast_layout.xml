@@ -13,6 +13,7 @@
         android:textColor="@color/white"
         android:textSize="18sp"
         android:gravity="center_vertical"
-        android:layout_gravity="center"/>
+        android:layout_gravity="center"
+    />
 
 </LinearLayout>

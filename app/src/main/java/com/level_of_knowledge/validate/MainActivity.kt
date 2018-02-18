@@ -27,6 +27,7 @@ import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import java.util.*
 import java.util.Calendar.*
+import android.media.MediaPlayer
 
 @Suppress("DEPRECATED_IDENTITY_EQUALS")
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
@@ -35,6 +36,8 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     val REQUEST_CAMERA = 1
 
     lateinit var digIDVal: DigitalIDValidator
+    private lateinit var mp: MediaPlayer
+
     var currentlyValidating = false
 
     val _tagProgressChange = "downloadProgressChange"
@@ -78,6 +81,11 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     override fun onStop(){
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mp.release()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -194,13 +202,16 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
         var info = reason
         if (isValid) {
-            view.setBackgroundResource(R.drawable.background_success)
+            mp = MediaPlayer.create (this, R.raw.validate_success)
 
+            view.setBackgroundResource(R.drawable.background_success)
             val diffInYears = getDiffYears(digIDVal.customerData.dateOfBirth, Date(System.currentTimeMillis()))
             info = digIDVal.customerData.givenNames + "\n" +
                     digIDVal.customerData.familyName + "\n\n" +
                     digIDVal.customerData.gender + " " + diffInYears
         } else {
+            mp = MediaPlayer.create (this, R.raw.validate_failure)
+
             view.setBackgroundResource(R.drawable.background_error)
             info = reason
         }
@@ -213,6 +224,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         view.setOnClickListener { cameraSource.start(cameraPreview.holder); alertDialog.dismiss() }
+        mp.start()
         alertDialog.show()
     }
 
