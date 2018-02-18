@@ -235,6 +235,7 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         alertDialog.setView(view)
         alertDialog.setCancelable(false)
         alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+        alertDialog.window.setDimAmount(0.0f)
         alertDialog.show()
     }
 
