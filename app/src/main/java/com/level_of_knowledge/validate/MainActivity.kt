@@ -27,6 +27,7 @@ import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import java.util.*
 import java.util.Calendar.*
+import android.media.MediaPlayer
 
 @Suppress("DEPRECATED_IDENTITY_EQUALS")
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
@@ -35,6 +36,8 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     val REQUEST_CAMERA = 1
 
     lateinit var digIDVal: DigitalIDValidator
+    private lateinit var mp: MediaPlayer
+
     var currentlyValidating = false
 
     val _tagProgressChange = "downloadProgressChange"
@@ -78,6 +81,11 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     override fun onStop(){
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mp.release()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -167,75 +175,58 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
                 if (it) {
                     if (useOnlineValidation) {
                         digIDVal!!.performOnlineValidation { valid, reason ->
-                            Log.e("main", "online validation result: ${valid}")
-                            runOnUiThread {
-                                if(valid)
-                                    showResult(digIDVal.customerData)
-                                else
-                                    showResult(reason)
-                            }
+                            runOnUiThread { this.showResult(valid, reason) }
                         }
                     } else {
                         secondaryQrResult?.let {
                             if (it) {
-                                Log.d("main", " **** ---> Both QR codes are VALID!")
-                                runOnUiThread { showResult( digIDVal.customerData) }
+                                runOnUiThread { showResult(true) }
                             } else {
-                                Log.e("main", " **** ---> Secondary QR data is invalid")
-                                runOnUiThread { showResult(Constant.configuration["invalid-id-error-message"]) }
+                                runOnUiThread { showResult(false, "The secondary QR code contained invalid data") }
                             }
                         }
                     }
                 } else {
-                    Log.e("main", " **** ---> Primary QR data does not have a valid digital signature")
+                    runOnUiThread { showResult(false, "Primary QR data does not have a valid digital signature") }
                 }
             }
         }
         currentlyValidating = false
     }
 
-    fun showResult(result : String?){
-        if(displayingResult)
-            return
-
-        displayingResult = true
-
-        val view = View.inflate(this, R.layout.toast_layout, null)
-        view.findViewById<TextView>(R.id.toast_text).text = result
-        view.setBackgroundResource(R.drawable.background_error)
-
-        val toast = Toast(this)
-        toast.view = view
-        toast.duration = Toast.LENGTH_LONG
-        toast.show()
-
-        val handler = Handler()
-        handler.postDelayed({ displayingResult = false }, 2000)
-    }
-
     @SuppressLint("MissingPermission")
-    fun showResult(result : DigitalIDValidator.Customer){
+    fun showResult(isValid: Boolean, reason: String? = null){
         cameraSource.stop()
 
         val view = View.inflate(this, R.layout.toast_layout, null)
-        val diffInYears = getDiffYears(result.dateOfBirth, Date(System.currentTimeMillis()))
 
-        val str =
-                result.givenNames + "\n" +
-                result.familyName + "\n\n" +
-                result.gender + " " + diffInYears
+        var info = reason
+        if (isValid) {
+            mp = MediaPlayer.create (this, R.raw.validate_success)
 
-        view.findViewById<TextView>(R.id.toast_text).text = str
-        view.setBackgroundResource(R.drawable.background_success)
+            view.setBackgroundResource(R.drawable.background_success)
+            val diffInYears = getDiffYears(digIDVal.customerData.dateOfBirth, Date(System.currentTimeMillis()))
+            info = digIDVal.customerData.givenNames + "\n" +
+                    digIDVal.customerData.familyName + "\n\n" +
+                    digIDVal.customerData.gender + " " + diffInYears
+        } else {
+            mp = MediaPlayer.create (this, R.raw.validate_failure)
+
+            view.setBackgroundResource(R.drawable.background_error)
+            info = reason
+        }
+
+        view.findViewById<TextView>(R.id.toast_text).text = info
 
         val alertDialog = AlertDialog.Builder(this).create()
-
-        view.setOnClickListener { cameraSource.start(cameraPreview.holder); alertDialog.dismiss() }
-
         alertDialog.setView(view)
         alertDialog.setCancelable(false)
         alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
         alertDialog.window.setDimAmount(0.0f)
+        alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        view.setOnClickListener { cameraSource.start(cameraPreview.holder); alertDialog.dismiss() }
+        mp.start()
         alertDialog.show()
     }
 

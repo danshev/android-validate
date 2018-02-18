@@ -96,12 +96,9 @@ class DigitalIDValidator private constructor(val context: Context){
     val expectedNumberGroup10Fields = 1
 
     // Holder variables for working values
-    var signatureVerified by Delegates.observable(false){
-        prop, old, new->
-        println("$old -> $new")
-    }
-    lateinit var assertionHash : String
-    var digitalWatermark : Int = -1 //Check
+    var signatureVerified = false
+    lateinit var assertionHash: String
+    var digitalWatermark: Int = -1 //Check
     lateinit var customerData : Customer
 
     var serviceAvailable = false
