@@ -237,24 +237,23 @@ class DigitalIDValidator private constructor(val context: Context){
             val endpoint = configuration["online-validation-endpoint"]
 
             Fuel.get("$endpoint$assertionHash").responseJson { request, response, result ->
-                currentlyPosting = false
-                Log.d(TAG, response.responseMessage)
-
                 result.fold({d ->
-                    Log.d(TAG, response.responseMessage)
                     val jsonData = d.obj()
                     fetchProfileImage(jsonData["serialNumber"].toString())
-
-                    Log.d(TAG, jsonData.toString())
-
                     completion(true, null)
                 }, { err ->
-                    Log.d(TAG, response.responseMessage)
-
-                    // TODO: determine if it is a server error or invalid ID
-
-                    completion(false, invalidMsg)
+                    when (response.statusCode) {
+                        403 -> {
+                            Log.d(TAG, "${response.statusCode}")
+                            completion(false, invalidMsg)
+                        }
+                        else -> {
+                            completion(false, serverErrorMsg)
+                            delegate?.validationServiceDidChange(false)
+                        }
+                    }
                 })
+                currentlyPosting = false
             }
         }
     }

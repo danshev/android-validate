@@ -50,18 +50,22 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     // Delegate function handlers -->
     override fun downloadProgressDidChange(to: Float) {
-        // Progress of the image download (for use with a visual progress indicator, for User feedback)
-        Log.e(_tagProgressChange, "progress: ${to}")
-        setProgress(to)
+        val progressDialog = findViewById<View>(R.id.progress_dialog)
+        val donutProgress = progressDialog.findViewById<DonutProgress>(R.id.donut_progress)
+        donutProgress.progress = to
     }
 
     override fun didReceiveProfileImage(profileImage: Bitmap) {
-        Log.e(_tagRecProfImage, "downloaded image")
         displayImage(profileImage)
     }
 
     override fun validationServiceDidChange(available: Boolean) {
-        Log.e(_tagProgressChange, "Online service available? ${available}")
+        if (!available) {
+            val onlineValidationSwitch = findViewById<Switch>(R.id.switch_validation)
+            onlineValidationSwitch.isEnabled = false
+            onlineValidationSwitch.setChecked(false)
+            onlineValidationSwitch.setText("Validation service unavailable")
+        }
     }
     // <-- Delegate function handlers
 
@@ -210,39 +214,46 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
         var info = reason
         if (isValid) {
+            // Prep media player to play success sound
             mp = MediaPlayer.create (this, R.raw.validate_success)
 
+            // Set green background
             view.setBackgroundResource(R.drawable.background_success)
             val diffInYears = getDiffYears(digIDVal.customerData.dateOfBirth, Date(System.currentTimeMillis()))
-            info = digIDVal.customerData.givenNames + "\n" +
-                    digIDVal.customerData.familyName + "\n\n" +
+            info = digIDVal.customerData.familyName + "\n" +
+                    digIDVal.customerData.givenNames + "\n\n" +
                     digIDVal.customerData.gender + " " + diffInYears
+
+            // Show download progress indicator, if using online validation service
+            if (findViewById<Switch>(R.id.switch_validation).isChecked)
+                displayProgressDialog(true)
+
         } else {
+            // Prep media player to play failure sound
             mp = MediaPlayer.create (this, R.raw.validate_failure)
 
+            // Set red background
             view.setBackgroundResource(R.drawable.background_error)
-            info = reason
         }
 
         view.findViewById<TextView>(R.id.toast_text).text = info
-
         val alertDialog = AlertDialog.Builder(this).create()
         alertDialog.setView(view)
         alertDialog.setCancelable(false)
-        alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+        alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         alertDialog.window.setDimAmount(0.0f)
         alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         view.setOnClickListener {
             cameraSource.start(cameraPreview.holder)
+            displayingResult = false
+            mp.release()
             alertDialog.dismiss()
             displayProgressDialog(false)
-            displayingResult = false
         }
 
         mp.start()
         alertDialog.show()
-        displayProgressDialog(true)
     }
 
     private fun getDiffYears(first: Date, last: Date): Int {
@@ -273,13 +284,6 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
             donutProgress.visibility = View.VISIBLE
             image.visibility = View.GONE
         }
-    }
-
-    private fun setProgress(percent : Float){
-        val progressDialog = findViewById<View>(R.id.progress_dialog)
-        val donutProgress = progressDialog.findViewById<DonutProgress>(R.id.donut_progress)
-
-        donutProgress.progress = percent
     }
 
     private fun displayImage(bmp : Bitmap){

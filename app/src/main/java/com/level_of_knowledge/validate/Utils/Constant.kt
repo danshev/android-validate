@@ -8,6 +8,6 @@ object Constant {
             "fetch-profile-image-endpoint" to "http://api.level-of-knowledge.com:2006/validate?serialNumber=",
             "online-validation-endpoint" to "http://api.level-of-knowledge.com:2006/validate?assertionHash=",
             "sync-keys-endpoint" to "http://api.level-of-knowledge.com:3000/public-keys",
-            "server-error-message" to "We're sorry, a server error occurred. Please tap validate in offline mode."
+            "server-error-message" to "We're sorry, a server error occurred. Please tap to validate in offline mode."
     )
 }
