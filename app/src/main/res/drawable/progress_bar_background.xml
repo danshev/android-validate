@@ -5,4 +5,7 @@
         android:color="@color/green_standard"/>
     <corners
         android:radius="6dp"/>
+    <stroke
+        android:color="@color/green_light"
+        android:width="3dp"/>
 </shape>

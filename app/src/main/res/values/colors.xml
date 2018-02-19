@@ -3,7 +3,9 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#43c665</color>
-    <color name="green">#41a571</color>
+    <color name="green_standard">#41a571</color>
+    <color name="green_light">#caf4cf</color>
+    <color name="green_medium">#48d686</color>
     <color name="red">#ef503d</color>
     <color name="white">#ffffff</color>
     <color name="gray">#685e58</color>

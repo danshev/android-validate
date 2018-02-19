@@ -6,8 +6,8 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.media.MediaPlayer
 import android.os.Bundle
-import android.os.Handler
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
@@ -16,18 +16,18 @@ import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
+import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import com.github.lzyzsd.circleprogress.DonutProgress
 import com.google.android.gms.vision.CameraSource
 import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
-import com.level_of_knowledge.validate.Utils.Constant
 import com.level_of_knowledge.validate.Utils.SettingMgr
 import java.util.*
 import java.util.Calendar.*
-import android.media.MediaPlayer
 
 @Suppress("DEPRECATED_IDENTITY_EQUALS")
 class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
@@ -52,10 +52,12 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     override fun downloadProgressDidChange(to: Float) {
         // Progress of the image download (for use with a visual progress indicator, for User feedback)
         Log.e(_tagProgressChange, "progress: ${to}")
+        setProgress(to)
     }
 
     override fun didReceiveProfileImage(profileImage: Bitmap) {
         Log.e(_tagRecProfImage, "downloaded image")
+        displayImage(profileImage)
     }
 
     override fun validationServiceDidChange(available: Boolean) {
@@ -85,7 +87,9 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
 
     override fun onDestroy() {
         super.onDestroy()
-        mp.release()
+        if(mp != null){
+            mp.release()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -123,7 +127,6 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
             override fun receiveDetections(detections: Detector.Detections<Barcode>) {
                 val barcodes = detections.detectedItems
                 if (barcodes.size() != 0 && !currentlyValidating) {
-                    //Log.d("main", barcodes.valueAt(0).displayValue)
                     validateBardcode(barcodes.valueAt(0).displayValue)
                 }
             }
@@ -198,6 +201,11 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
     fun showResult(isValid: Boolean, reason: String? = null){
         cameraSource.stop()
 
+        if(displayingResult)
+            return;
+
+        displayingResult = true;
+
         val view = View.inflate(this, R.layout.toast_layout, null)
 
         var info = reason
@@ -225,9 +233,16 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         alertDialog.window.setDimAmount(0.0f)
         alertDialog.window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        view.setOnClickListener { cameraSource.start(cameraPreview.holder); alertDialog.dismiss() }
+        view.setOnClickListener {
+            cameraSource.start(cameraPreview.holder)
+            alertDialog.dismiss()
+            displayProgressDialog(false)
+            displayingResult = false
+        }
+
         mp.start()
         alertDialog.show()
+        displayProgressDialog(true)
     }
 
     private fun getDiffYears(first: Date, last: Date): Int {
@@ -244,5 +259,37 @@ class MainActivity : AppCompatActivity(), DigitalIDValidatorDelegate{
         val cal = Calendar.getInstance(Locale.US)
         cal.time = date
         return cal
+    }
+
+    private fun displayProgressDialog(display : Boolean){
+        val progressDialog = findViewById<View>(R.id.progress_dialog)
+        val donutProgress = progressDialog.findViewById<DonutProgress>(R.id.donut_progress)
+        val image = progressDialog.findViewById<ImageView>(R.id.image)
+
+        if(display){
+            progressDialog.visibility = View.VISIBLE
+        }else{
+            progressDialog.visibility = View.GONE
+            donutProgress.visibility = View.VISIBLE
+            image.visibility = View.GONE
+        }
+    }
+
+    private fun setProgress(percent : Float){
+        val progressDialog = findViewById<View>(R.id.progress_dialog)
+        val donutProgress = progressDialog.findViewById<DonutProgress>(R.id.donut_progress)
+
+        donutProgress.progress = percent
+    }
+
+    private fun displayImage(bmp : Bitmap){
+        val progressDialog = findViewById<View>(R.id.progress_dialog)
+        val donutProgress = progressDialog.findViewById<DonutProgress>(R.id.donut_progress)
+        val image = progressDialog.findViewById<ImageView>(R.id.image)
+
+        donutProgress.visibility = View.GONE
+        image.visibility = View.VISIBLE
+
+        image.setImageBitmap(bmp)
     }
 }
